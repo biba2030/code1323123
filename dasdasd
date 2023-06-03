@@ -1,0 +1,183 @@
+import tkinter as tk
+from tkinter import ttk
+import datetime
+import mysql.connector
+
+# установка соединения с базой данных
+mydb = mysql.connector.connect(
+  host="localhost",
+  port="3307",
+  user="root",
+  password="biba",
+  database="database"
+)
+mycursor = mydb.cursor()
+
+# создание таблицы "покупки"
+mycursor.execute("CREATE TABLE IF NOT EXISTS purchases (id INT AUTO_INCREMENT PRIMARY KEY, date DATE, name VARCHAR(255), quantity INT, price FLOAT, total FLOAT)")
+
+# создание таблицы "продажи"
+mycursor.execute("CREATE TABLE IF NOT EXISTS sales (id INT AUTO_INCREMENT PRIMARY KEY, date DATE, name VARCHAR(255), buyer VARCHAR(255), price FLOAT)")
+
+# создание интерфейса
+root = tk.Tk()
+root.title("Учет расходов и продаж")
+
+# создание вкладок
+tab_control = ttk.Notebook(root)
+
+# вкладка "Покупки"
+purchase_tab = ttk.Frame(tab_control)
+tab_control.add(purchase_tab, text="Покупки")
+
+# виджеты на вкладке "Покупки"
+purchase_date_label = tk.Label(purchase_tab, text="Введите дату покупки:")
+purchase_date_label.grid(column=0, row=0, padx=5, pady=5)
+purchase_date = tk.StringVar(value=datetime.date.today().strftime('%Y-%m-%d'))
+purchase_date_entry = tk.Entry(purchase_tab, textvariable=purchase_date, width=12)
+purchase_date_entry.grid(column=1, row=0, padx=5, pady=5)
+
+purchase_name_label = tk.Label(purchase_tab, text="Введите название расходника:")
+purchase_name_label.grid(column=0, row=1, padx=5, pady=5)
+purchase_name = tk.StringVar()
+purchase_name_entry = tk.Entry(purchase_tab, textvariable=purchase_name)
+purchase_name_entry.grid(column=1, row=1, padx=5, pady=5)
+
+purchase_quantity_label = tk.Label(purchase_tab, text="Введите количество:")
+purchase_quantity_label.grid(column=0, row=2, padx=5, pady=5)
+purchase_quantity = tk.IntVar()
+purchase_quantity_entry = tk.Entry(purchase_tab, textvariable=purchase_quantity, width=12)
+purchase_quantity_entry.grid(column=1, row=2, padx=5, pady=5)
+
+purchase_price_label = tk.Label(purchase_tab, text="Введите цену:")
+purchase_price_label.grid(column=0, row=3, padx=5, pady=5)
+purchase_price = tk.DoubleVar()
+purchase_price_entry = tk.Entry(purchase_tab, textvariable=purchase_price, width=12)
+purchase_price_entry.grid(column=1, row=3, padx=5, pady=5)
+
+purchase_total_label = tk.Label(purchase_tab, text="Сумма затрат:")
+purchase_total_label.grid(column=0, row=4, padx=5, pady=5)
+purchase_total = tk.Label(purchase_tab, text="0.00", width=12)
+purchase_total.grid(column=1, row=4, padx=5, pady=5)
+
+save_purchase_button = tk.Button(purchase_tab, text="Сохранить покупку")
+save_purchase_button.grid(column=0, row=5, columnspan=2, padx=5, pady=5)
+
+# функция сохранения данных о покупке в БД
+def save_purchase():
+    date = purchase_date.get()
+    name = purchase_name.get()
+    quantity = purchase_quantity.get()
+    price = purchase_price.get()
+    total = quantity * price
+    mycursor.execute("INSERT INTO purchases (date, name, quantity, price, total) VALUES (%s, %s, %s, %s, %s)", (date, name, quantity, price, total))
+    mydb.commit()
+    purchase_name.set("")
+    purchase_quantity.set(0)
+    purchase_price.set(0)
+    purchase_total.config(text="0.00")
+    tk.messagebox.showinfo("Уведомление", "Покупка сохранена в базе данных")
+
+save_purchase_button.config(command=save_purchase)
+
+# обновление суммы затрат при изменении количества и цены
+def update_purchase_total(*args):
+    total = purchase_quantity.get() * purchase_price.get()
+    purchase_total.config(text="{:.2f}".format(total))
+
+purchase_quantity.trace_add("write", update_purchase_total)
+purchase_price.trace_add("write", update_purchase_total)
+
+# вкладка "Продажи"
+sale_tab = ttk.Frame(tab_control)
+tab_control.add(sale_tab, text="Продажи")
+
+# виджеты на вкладке "Продажи"
+sale_date_label = tk.Label(sale_tab, text="Дата продажи:")
+sale_date_label.grid(column=0, row=0, padx=5, pady=5)
+sale_date = tk.StringVar(value=datetime.date.today().strftime('%Y-%m-%d'))
+sale_date_entry = tk.Entry(sale_tab, textvariable=sale_date, width=12)
+sale_date_entry.grid(column=1, row=0, padx=5, pady=5)
+
+sale_name_label = tk.Label(sale_tab, text="Название продукта:")
+sale_name_label.grid(column=0, row=1, padx=5, pady=5)
+sale_name = tk.StringVar()
+sale_name_entry = tk.Entry(sale_tab, textvariable=sale_name)
+sale_name_entry.grid(column=1, row=1, padx=5, pady=5)
+
+sale_buyer_label = tk.Label(sale_tab, text="Покупатель:")
+sale_buyer_label.grid(column=0, row=2, padx=5, pady=5)
+sale_buyer = tk.StringVar()
+sale_buyer_entry = tk.Entry(sale_tab, textvariable=sale_buyer)
+sale_buyer_entry.grid(column=1, row=2, padx=5, pady=5)
+
+sale_price_label = tk.Label(sale_tab, text="Цена:")
+sale_price_label.grid(column=0, row=3, padx=5, pady=5)
+sale_price = tk.DoubleVar()
+sale_price_entry = tk.Entry(sale_tab, textvariable=sale_price, width=12)
+sale_price_entry.grid(column=1, row=3, padx=5, pady=5)
+
+save_sale_button = tk.Button(sale_tab, text="Сохранить продажу")
+save_sale_button.grid(column=0, row=4, columnspan=2, padx=5, pady=5)
+
+# функция сохранения данных о продаже в БД
+def save_sale():
+    date = sale_date.get()
+    name = sale_name.get()
+    buyer = sale_buyer.get()
+    price = sale_price.get()
+    mycursor.execute("INSERT INTO sales (date, name, buyer, price) VALUES (%s, %s, %s, %s)", (date, name, buyer, price))
+    mydb.commit()
+    sale_name.set("")
+    sale_buyer.set("")
+    sale_price.set(0)
+    tk.messagebox.showinfo("Уведомление", "Продажа сохранена в базе данных")
+
+save_sale_button.config(command=save_sale)
+
+# вкладка "Остаток средств"
+balance_tab = ttk.Frame(tab_control)
+tab_control.add(balance_tab, text="Остаток средств")
+
+# виджеты на вкладке "Остаток средств"
+balance_date_label = tk.Label(balance_tab, text="Выберите дату подсчета остатка:")
+balance_date_label.grid(column=0, row=0, padx=5, pady=5)
+balance_date = tk.StringVar(value=datetime.date.today().strftime('%Y-%m-%d'))
+balance_date_entry = tk.Entry(balance_tab, textvariable=balance_date, width=12)
+balance_date_entry.grid(column=1, row=0, padx=5, pady=5)
+
+balance_amount_label = tk.Label(balance_tab, text="На счету:")
+balance_amount_label.grid(column=0, row=1, padx=5, pady=5)
+balance_amount = tk.Label(balance_tab, text="0.00", width=12)
+balance_amount.grid(column=1, row=1, padx=5, pady=5)
+
+# функция для подсчета остатка средств на заданную дату
+def calculate_balance():
+    date = balance_date.get()
+    mycursor.execute("SELECT SUM(total) FROM purchases WHERE date <= %s", (date,))
+    purchases_sum = mycursor.fetchone()[0] or 0
+    mycursor.execute("SELECT SUM(price) FROM sales WHERE date <= %s", (date,))
+    sales_sum = mycursor.fetchone()[0] or 0
+    balance = sales_sum - purchases_sum
+    balance_amount.config(text="{:.2f}".format(balance))
+
+calculate_balance_button = tk.Button(balance_tab, text="Подсчитать остаток")
+calculate_balance_button.grid(column=0, row=2, columnspan=2, padx=5, pady=5)
+calculate_balance_button.config(command=calculate_balance)
+
+# установка параметров для интерфейса
+for child in purchase_tab.winfo_children():
+    child.grid_configure(padx=10, pady=10)
+for child in sale_tab.winfo_children():
+    child.grid_configure(padx=10, pady=10)
+for child in balance_tab.winfo_children():
+    child.grid_configure(padx=10, pady=10)
+
+tab_control.pack(expand=1, fill="both")
+
+# запуск интерфейса
+root.mainloop()
+
+# закрытие соединения с базой данных
+mycursor.close()
+mydb.close()
